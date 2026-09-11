@@ -1,4 +1,4 @@
-# Terminal Music Player
+# Terminal Music Player #
 
 A lightweight, interactive terminal-based music player built using Node.js.
 
