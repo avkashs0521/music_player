@@ -3,62 +3,115 @@
 const terminal = require('./terminal');
 const player = require('./player');
 
-// Helper to format a box row with consistent padding
-function formatRow(text, width = 42) {
-  const line = '  ' + text;
-  if (line.length < width) {
-    return line + ' '.repeat(width - line.length);
+// Pad plain text to exact visual column width
+function padLine(text, width = 42) {
+  if (text.length < width) {
+    return text + ' '.repeat(width - text.length);
   }
-  return line.slice(0, width);
+  return text.slice(0, width);
 }
 
-// Render the player interface
-function renderUI(status = 'No song selected') {
+// Render the player and playlist interface
+function renderUI(statusMessage = 'Ready') {
   terminal.clearScreen();
   const c = terminal.ANSI;
+  const state = player.getState();
 
+  // Top header
   terminal.print(`${c.cyan}╔══════════════════════════════════════════╗${c.reset}`);
   terminal.print(`${c.cyan}║${c.bold}        🎵 TERMINAL MUSIC PLAYER          ${c.reset}${c.cyan}║${c.reset}`);
   terminal.print(`${c.cyan}╠══════════════════════════════════════════╣${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}                                          ${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}${formatRow(status)}${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}                                          ${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}  ${c.bold}[P]${c.reset} Play/Pause                          ${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}  ${c.bold}[S]${c.reset} Stop                                ${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}  ${c.bold}[N]${c.reset} Next                                ${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}  ${c.bold}[B]${c.reset} Previous                            ${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}  ${c.bold}[Q]${c.reset} Quit                                ${c.cyan}║${c.reset}`);
-  terminal.print(`${c.cyan}║${c.reset}                                          ${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine(' Songs', 42)}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine('', 42)}${c.cyan}║${c.reset}`);
+
+  // Playlist items or error states
+  if (state.directoryStatus === 'NOT_FOUND') {
+    terminal.print(`${c.cyan}║${c.yellow}${padLine('  Music directory not found.', 42)}${c.reset}${c.cyan}║${c.reset}`);
+    terminal.print(`${c.cyan}║${c.yellow}${padLine('  Please create "music" folder.', 42)}${c.reset}${c.cyan}║${c.reset}`);
+  } else if (state.directoryStatus === 'EMPTY' || state.songs.length === 0) {
+    terminal.print(`${c.cyan}║${c.yellow}${padLine('  No music files found.', 42)}${c.reset}${c.cyan}║${c.reset}`);
+    terminal.print(`${c.cyan}║${c.gray}${padLine('  Add .mp3 or .wav files to music folder.', 42)}${c.reset}${c.cyan}║${c.reset}`);
+  } else {
+    state.songs.forEach((song, index) => {
+      const num = String(index + 1).padStart(2, '0');
+      const isSelected = index === state.selectedIndex;
+      if (isSelected) {
+        const row = padLine(` > ${num}. ${song}`, 42);
+        terminal.print(`${c.cyan}║${c.green}${c.bold}${row}${c.reset}${c.cyan}║${c.reset}`);
+      } else {
+        const row = padLine(`   ${num}. ${song}`, 42);
+        terminal.print(`${c.cyan}║${c.reset}${row}${c.cyan}║${c.reset}`);
+      }
+    });
+  }
+
+  terminal.print(`${c.cyan}║${c.reset}${padLine('', 42)}${c.cyan}║${c.reset}`);
+
+  // Playback state row
+  let trackText = '  No song playing';
+  if (state.currentTrack) {
+    if (state.isPlaying && !state.isPaused) {
+      trackText = `  ▶ Playing: ${state.currentTrack}`;
+    } else if (state.isPaused) {
+      trackText = `  ❚❚ Paused: ${state.currentTrack}`;
+    } else {
+      trackText = `  ■ Stopped: ${state.currentTrack}`;
+    }
+  }
+
+  terminal.print(`${c.cyan}║${c.reset}${padLine(trackText, 42)}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine('', 42)}${c.cyan}║${c.reset}`);
+
+  // Controls guide
+  terminal.print(`${c.cyan}║${c.reset}${padLine(' [↑/↓] Select', 42)}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine(' [P]   Play/Pause', 42)}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine(' [S]   Stop', 42)}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine(' [N]   Next', 42)}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine(' [B]   Previous', 42)}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine(' [Q]   Quit', 42)}${c.cyan}║${c.reset}`);
   terminal.print(`${c.cyan}╚══════════════════════════════════════════╝${c.reset}`);
   terminal.print();
-  terminal.print(`${c.gray}Press any key above to control, or 'Q' / Ctrl+C to quit.${c.reset}`);
+  terminal.print(`${c.gray}Status: ${statusMessage}${c.reset}`);
 }
 
 // Handle keypress events routed from terminal.js
 function handleInput(key) {
+  // Arrow Up
+  if (key === '\x1b[A' || key === '\x1bOA') {
+    player.selectPrevious();
+    renderUI('Selection moved up');
+    return;
+  }
+
+  // Arrow Down
+  if (key === '\x1b[B' || key === '\x1bOB') {
+    player.selectNext();
+    renderUI('Selection moved down');
+    return;
+  }
+
   const cleanKey = typeof key === 'string' ? key.replace(/[\r\n]/g, '').trim() : '';
   const upperKey = cleanKey.toUpperCase();
 
-
   switch (upperKey) {
     case 'P': {
-      const result = player.togglePlay();
-      renderUI(`Pressed: P (${result})`);
+      const msg = player.togglePlay();
+      renderUI(msg);
       break;
     }
     case 'S': {
-      const result = player.stop();
-      renderUI(`Pressed: S (${result})`);
+      const msg = player.stop();
+      renderUI(msg);
       break;
     }
     case 'N': {
-      const result = player.next();
-      renderUI(`Pressed: N (${result})`);
+      const msg = player.next();
+      renderUI(msg);
       break;
     }
     case 'B': {
-      const result = player.previous();
-      renderUI(`Pressed: B (${result})`);
+      const msg = player.previous();
+      renderUI(msg);
       break;
     }
     case 'Q': {
@@ -69,8 +122,7 @@ function handleInput(key) {
       break;
     }
     default: {
-      const displayKey = typeof key === 'string' ? key.replace(/[\r\n\t]/g, '').trim() : '';
-      renderUI(`Pressed: ${displayKey || 'Unknown'}`);
+      renderUI(`Key pressed: ${cleanKey || 'Unknown'}`);
       break;
     }
   }
@@ -78,10 +130,12 @@ function handleInput(key) {
 
 // Start the application
 function start() {
+  player.loadSongs();
   terminal.hideCursor();
-  renderUI('No song selected');
+  renderUI('Ready');
   terminal.enableRawInput(handleInput);
 }
 
 start();
+
 

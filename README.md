@@ -38,12 +38,21 @@ terminal-music-player/
    npm start
    ```
 
-## Controls (Milestone 2)
+## Features (Milestone 3)
 
+- **Music Library Scanning**: Scans the `music/` directory on startup and detects supported audio files (`.mp3`, `.wav`, `.ogg`, `.m4a`), ignoring unsupported files.
+- **Interactive Playlist**: Renders discovered tracks as a numbered list with a visual indicator (`>`) on the currently selected item.
+- **Graceful Error Handling**: Displays clear messages if the `music/` folder is missing or contains no audio files.
+- **Keyboard Navigation**: Move selection through the playlist with arrow keys (`↑` / `↓`).
+
+## Controls
+
+- **↑ / ↓**: Select song in playlist
 - **p / P**: Play / Pause toggle
 - **s / S**: Stop playback
 - **n / N**: Next track
 - **b / B**: Previous track
 - **q / Q**: Exit the application cleanly
 - **Ctrl+C**: Exit the application safely
+
 
