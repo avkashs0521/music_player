@@ -42,6 +42,14 @@ function previous() {
   return 'Previous track';
 }
 
+// Toggle between play and pause
+function togglePlay(track) {
+  if (state.isPlaying && !state.isPaused) {
+    return pause();
+  }
+  return play(track || state.currentTrack || 'Demo Song');
+}
+
 // Get current player state
 function getState() {
   return { ...state };
@@ -53,5 +61,7 @@ module.exports = {
   stop,
   next,
   previous,
+  togglePlay,
   getState,
 };
+

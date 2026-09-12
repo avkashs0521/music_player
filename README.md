@@ -38,7 +38,12 @@ terminal-music-player/
    npm start
    ```
 
-## Controls (Milestone 1)
+## Controls (Milestone 2)
 
-- **q**: Exit the application
-- **Ctrl+C**: Exit the application
+- **p / P**: Play / Pause toggle
+- **s / S**: Stop playback
+- **n / N**: Next track
+- **b / B**: Previous track
+- **q / Q**: Exit the application cleanly
+- **Ctrl+C**: Exit the application safely
+

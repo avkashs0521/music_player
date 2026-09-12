@@ -8,8 +8,11 @@ const ANSI = {
   cyan: '\x1b[36m',
   green: '\x1b[32m',
   yellow: '\x1b[33m',
+  red: '\x1b[31m',
   gray: '\x1b[90m',
-  clear: '\x1b[2J\x1b[0;0H', // Clears terminal screen and moves cursor to top-left
+  clear: '\x1b[2J\x1b[0;0H',      // Clears terminal screen and moves cursor to top-left
+  hideCursor: '\x1b[?25l',        // Hides cursor
+  showCursor: '\x1b[?25h',        // Restores cursor visibility
 };
 
 // Clear the terminal screen
@@ -17,13 +20,33 @@ function clearScreen() {
   process.stdout.write(ANSI.clear);
 }
 
+// Hide the cursor
+function hideCursor() {
+  process.stdout.write(ANSI.hideCursor);
+}
+
+// Show the cursor
+function showCursor() {
+  process.stdout.write(ANSI.showCursor);
+}
+
+// Reset formatting
+function reset() {
+  process.stdout.write(ANSI.reset);
+}
+
 // Print formatted message to terminal output
 function print(message = '') {
   console.log(message);
 }
 
+// Track whether the terminal has already been restored to prevent duplicate work
+let isRestored = false;
+
 // Enable raw keyboard input to capture keypresses immediately
 function enableRawInput(onKeyPress) {
+  isRestored = false;
+
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(true);
   }
@@ -45,16 +68,27 @@ function enableRawInput(onKeyPress) {
 
 // Restore terminal settings before exiting
 function restoreTerminal() {
+  if (isRestored) {
+    return;
+  }
+  isRestored = true;
+
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(false);
   }
   process.stdin.pause();
+  showCursor();
+  reset();
 }
 
 module.exports = {
   ANSI,
   clearScreen,
+  hideCursor,
+  showCursor,
+  reset,
   print,
   enableRawInput,
   restoreTerminal,
 };
+
