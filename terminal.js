@@ -43,6 +43,13 @@ function print(message = '') {
 // Track whether the terminal has already been restored to prevent duplicate work
 let isRestored = false;
 
+// Optional cleanup hook before restoring terminal (e.g. stopping audio child process)
+let cleanupHook = null;
+
+function setCleanupHook(fn) {
+  cleanupHook = fn;
+}
+
 // Enable raw keyboard input to capture keypresses immediately
 function enableRawInput(onKeyPress) {
   isRestored = false;
@@ -73,6 +80,14 @@ function restoreTerminal() {
   }
   isRestored = true;
 
+  if (typeof cleanupHook === 'function') {
+    try {
+      cleanupHook();
+    } catch (err) {
+      // Ignore cleanup hook errors during exit
+    }
+  }
+
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(false);
   }
@@ -88,7 +103,9 @@ module.exports = {
   showCursor,
   reset,
   print,
+  setCleanupHook,
   enableRawInput,
   restoreTerminal,
 };
+
 

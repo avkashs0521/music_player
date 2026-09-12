@@ -47,19 +47,25 @@ function renderUI(statusMessage = 'Ready') {
 
   terminal.print(`${c.cyan}║${c.reset}${padLine('', 42)}${c.cyan}║${c.reset}`);
 
-  // Playback state row
-  let trackText = '  No song playing';
-  if (state.currentTrack) {
-    if (state.isPlaying && !state.isPaused) {
-      trackText = `  ▶ Playing: ${state.currentTrack}`;
-    } else if (state.isPaused) {
-      trackText = `  ❚❚ Paused: ${state.currentTrack}`;
-    } else {
-      trackText = `  ■ Stopped: ${state.currentTrack}`;
-    }
+  // Playback state rows
+  let trackRow = '   No song playing';
+  let statusRow = ' Status: STOPPED';
+
+  if (state.status === 'PLAYING') {
+    trackRow = ` ▶ Now Playing: ${state.currentTrack || 'Unknown'}`;
+    statusRow = ' Status: PLAYING';
+    terminal.print(`${c.cyan}║${c.green}${c.bold}${padLine(trackRow, 42)}${c.reset}${c.cyan}║${c.reset}`);
+    terminal.print(`${c.cyan}║${c.green}${padLine(statusRow, 42)}${c.reset}${c.cyan}║${c.reset}`);
+  } else if (state.status === 'PAUSED') {
+    trackRow = ` ❚❚ Paused: ${state.currentTrack || 'Unknown'}`;
+    statusRow = ' Status: PAUSED';
+    terminal.print(`${c.cyan}║${c.yellow}${padLine(trackRow, 42)}${c.reset}${c.cyan}║${c.reset}`);
+    terminal.print(`${c.cyan}║${c.yellow}${padLine(statusRow, 42)}${c.reset}${c.cyan}║${c.reset}`);
+  } else {
+    terminal.print(`${c.cyan}║${c.reset}${padLine(trackRow, 42)}${c.cyan}║${c.reset}`);
+    terminal.print(`${c.cyan}║${c.gray}${padLine(statusRow, 42)}${c.reset}${c.cyan}║${c.reset}`);
   }
 
-  terminal.print(`${c.cyan}║${c.reset}${padLine(trackText, 42)}${c.cyan}║${c.reset}`);
   terminal.print(`${c.cyan}║${c.reset}${padLine('', 42)}${c.cyan}║${c.reset}`);
 
   // Controls guide
@@ -71,7 +77,7 @@ function renderUI(statusMessage = 'Ready') {
   terminal.print(`${c.cyan}║${c.reset}${padLine(' [Q]   Quit', 42)}${c.cyan}║${c.reset}`);
   terminal.print(`${c.cyan}╚══════════════════════════════════════════╝${c.reset}`);
   terminal.print();
-  terminal.print(`${c.gray}Status: ${statusMessage}${c.reset}`);
+  terminal.print(`${c.gray}Action: ${statusMessage}${c.reset}`);
 }
 
 // Handle keypress events routed from terminal.js
@@ -115,6 +121,7 @@ function handleInput(key) {
       break;
     }
     case 'Q': {
+      player.stop();
       terminal.restoreTerminal();
       terminal.print();
       terminal.print(`${terminal.ANSI.green}Thank you for using Terminal Music Player. Goodbye!${terminal.ANSI.reset}`);
@@ -131,11 +138,18 @@ function handleInput(key) {
 // Start the application
 function start() {
   player.loadSongs();
+  terminal.setCleanupHook(() => player.stop());
+  player.setOnStateChange(() => renderUI('Playback state updated'));
+
+  // Ensure process cleanup on unexpected exit
+  process.on('exit', () => player.cleanup());
+
   terminal.hideCursor();
   renderUI('Ready');
   terminal.enableRawInput(handleInput);
 }
 
 start();
+
 
 
