@@ -169,10 +169,16 @@ function handleInput(key) {
 // Start the application
 function start() {
   player.loadSongs();
-  terminal.setCleanupHook(() => player.cleanup());
+
+  // Register cleanup hook before terminal restoration
+  terminal.setCleanupHook(() => {
+    isExiting = true;
+    player.cleanup();
+  });
 
   // Listen for timer updates and song completion to re-render in-place
   player.setOnStateChange((newState) => {
+    if (isExiting) return;
     let msg = 'Playback state updated';
     if (newState.status === 'PLAYING') {
       msg = `Playing: ${newState.currentTrack}`;
@@ -184,8 +190,25 @@ function start() {
     renderUI(msg);
   });
 
-  // Ensure process and timer cleanup on exit
-  process.on('exit', () => player.cleanup());
+  // Ensure process and timer cleanup on unexpected exit
+  process.on('exit', () => {
+    isExiting = true;
+    player.cleanup();
+  });
+
+  process.on('SIGINT', () => {
+    isExiting = true;
+    player.cleanup();
+    terminal.restoreTerminal();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', () => {
+    isExiting = true;
+    player.cleanup();
+    terminal.restoreTerminal();
+    process.exit(0);
+  });
 
   terminal.clearScreen();
   terminal.hideCursor();
@@ -194,6 +217,7 @@ function start() {
 }
 
 start();
+
 
 
 
