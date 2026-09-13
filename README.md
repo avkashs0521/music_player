@@ -38,13 +38,15 @@ terminal-music-player/
    npm start
    ```
 
-## Features (Milestone 4)
+## Features (Milestone 5)
 
-- **Real Audio Playback**: Plays audio out of Mac speakers using the native macOS `afplay` command spawned via Node.js `child_process`.
-- **Process Signal Controls**: Uses operating-system signals (`SIGSTOP` to pause, `SIGCONT` to resume, and `SIGKILL` to stop) for responsive playback management.
-- **Multiple Process Prevention**: Guarantees previous audio processes are completely terminated before a new track begins.
-- **Interactive Playlist**: Discovers `.mp3`, `.wav`, `.ogg`, and `.m4a` files in `music/`, allows selection with `↑`/`↓`, and displays `PLAYING`, `PAUSED`, or `STOPPED` status.
-- **Safe Exit & Cleanup**: Quitting via `Q` or `Ctrl+C` immediately stops any background audio process and restores the terminal.
+- **Real Audio Playback**: Plays audio through Mac speakers using the native macOS `afplay` command spawned via Node.js `child_process`.
+- **Live Progress Bar**: Displays a fixed-width visual progress bar (`[██████░░░░] MM:SS / MM:SS`) indicating elapsed and total track time.
+- **Duration Detection**: Inspects track duration in seconds using macOS built-in `afinfo` utility.
+- **In-Place Terminal Rendering**: Updates elapsed time and progress bar every second in-place using ANSI cursor repositioning (`\x1b[H`), preventing screen flickering and duplicate lines.
+- **Process Signal Controls**: Uses operating-system signals (`SIGSTOP` to pause, `SIGCONT` to resume, and `SIGKILL` to stop) synchronized with `setInterval()` and `clearInterval()`.
+- **Multiple Process & Timer Cleanup**: Stops previous processes and clears active timers on track changes, stops, and application exits.
+
 
 ## Controls
 

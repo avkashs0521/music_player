@@ -11,6 +11,7 @@ const ANSI = {
   red: '\x1b[31m',
   gray: '\x1b[90m',
   clear: '\x1b[2J\x1b[0;0H',      // Clears terminal screen and moves cursor to top-left
+  cursorHome: '\x1b[H',           // Moves cursor to top-left without clearing screen
   hideCursor: '\x1b[?25l',        // Hides cursor
   showCursor: '\x1b[?25h',        // Restores cursor visibility
 };
@@ -20,10 +21,16 @@ function clearScreen() {
   process.stdout.write(ANSI.clear);
 }
 
+// Move cursor to top-left without clearing screen (for in-place updates)
+function cursorHome() {
+  process.stdout.write(ANSI.cursorHome);
+}
+
 // Hide the cursor
 function hideCursor() {
   process.stdout.write(ANSI.hideCursor);
 }
+
 
 // Show the cursor
 function showCursor() {
@@ -99,6 +106,7 @@ function restoreTerminal() {
 module.exports = {
   ANSI,
   clearScreen,
+  cursorHome,
   hideCursor,
   showCursor,
   reset,
@@ -107,5 +115,6 @@ module.exports = {
   enableRawInput,
   restoreTerminal,
 };
+
 
 

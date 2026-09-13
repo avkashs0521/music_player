@@ -11,11 +11,35 @@ function padLine(text, width = 42) {
   return text.slice(0, width);
 }
 
-// Render the player and playlist interface
+// Format seconds into MM:SS format
+function formatTime(seconds = 0) {
+  const totalSec = Math.max(0, Math.floor(seconds));
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+// Build fixed-width visual progress bar [██████░░░░] MM:SS / MM:SS
+function getProgressBar(elapsed, duration, barWidth = 20) {
+  const safeDuration = duration > 0 ? duration : 1;
+  const ratio = Math.min(1, Math.max(0, elapsed / safeDuration));
+  const filled = Math.round(ratio * barWidth);
+  const empty = barWidth - filled;
+  const bar = '█'.repeat(filled) + '░'.repeat(empty);
+  return `[${bar}] ${formatTime(elapsed)} / ${formatTime(duration)}`;
+}
+
+// Track if application is currently exiting
+let isExiting = false;
+
+// Render the player, playlist, and progress interface in-place
 function renderUI(statusMessage = 'Ready') {
-  terminal.clearScreen();
+  if (isExiting) return;
+
+  terminal.cursorHome();
   const c = terminal.ANSI;
   const state = player.getState();
+
 
   // Top header
   terminal.print(`${c.cyan}╔══════════════════════════════════════════╗${c.reset}`);
@@ -68,6 +92,11 @@ function renderUI(statusMessage = 'Ready') {
 
   terminal.print(`${c.cyan}║${c.reset}${padLine('', 42)}${c.cyan}║${c.reset}`);
 
+  // Live playback progress bar row
+  const progressStr = getProgressBar(state.elapsed, state.duration, 20);
+  terminal.print(`${c.cyan}║${c.cyan}${padLine(' ' + progressStr, 42)}${c.reset}${c.cyan}║${c.reset}`);
+  terminal.print(`${c.cyan}║${c.reset}${padLine('', 42)}${c.cyan}║${c.reset}`);
+
   // Controls guide
   terminal.print(`${c.cyan}║${c.reset}${padLine(' [↑/↓] Select', 42)}${c.cyan}║${c.reset}`);
   terminal.print(`${c.cyan}║${c.reset}${padLine(' [P]   Play/Pause', 42)}${c.cyan}║${c.reset}`);
@@ -77,7 +106,7 @@ function renderUI(statusMessage = 'Ready') {
   terminal.print(`${c.cyan}║${c.reset}${padLine(' [Q]   Quit', 42)}${c.cyan}║${c.reset}`);
   terminal.print(`${c.cyan}╚══════════════════════════════════════════╝${c.reset}`);
   terminal.print();
-  terminal.print(`${c.gray}Action: ${statusMessage}${c.reset}`);
+  terminal.print(`${c.gray}Action: ${statusMessage.padEnd(35)}${c.reset}`);
 }
 
 // Handle keypress events routed from terminal.js
@@ -121,13 +150,15 @@ function handleInput(key) {
       break;
     }
     case 'Q': {
-      player.stop();
+      isExiting = true;
+      player.cleanup();
       terminal.restoreTerminal();
       terminal.print();
       terminal.print(`${terminal.ANSI.green}Thank you for using Terminal Music Player. Goodbye!${terminal.ANSI.reset}`);
       process.exit(0);
       break;
     }
+
     default: {
       renderUI(`Key pressed: ${cleanKey || 'Unknown'}`);
       break;
@@ -138,18 +169,32 @@ function handleInput(key) {
 // Start the application
 function start() {
   player.loadSongs();
-  terminal.setCleanupHook(() => player.stop());
-  player.setOnStateChange(() => renderUI('Playback state updated'));
+  terminal.setCleanupHook(() => player.cleanup());
 
-  // Ensure process cleanup on unexpected exit
+  // Listen for timer updates and song completion to re-render in-place
+  player.setOnStateChange((newState) => {
+    let msg = 'Playback state updated';
+    if (newState.status === 'PLAYING') {
+      msg = `Playing: ${newState.currentTrack}`;
+    } else if (newState.status === 'PAUSED') {
+      msg = `Paused: ${newState.currentTrack}`;
+    } else if (newState.status === 'STOPPED') {
+      msg = 'Playback stopped';
+    }
+    renderUI(msg);
+  });
+
+  // Ensure process and timer cleanup on exit
   process.on('exit', () => player.cleanup());
 
+  terminal.clearScreen();
   terminal.hideCursor();
   renderUI('Ready');
   terminal.enableRawInput(handleInput);
 }
 
 start();
+
 
 
 
